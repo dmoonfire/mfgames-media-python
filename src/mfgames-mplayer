@@ -1,0 +1,238 @@
+#!/usr/bin/python
+
+#
+# Setup
+#
+
+# Imports
+import argparse
+import logging
+import os
+import re
+import subprocess
+import sqlite3
+import time
+
+# Constants
+DATABASE_SCHEMA = 1
+PLAYER_CMD = "/usr/bin/mplayer"
+SAVE_OFFSET_SECONDS = 5
+STATUS_REGEX = 'STATUSLINE: A:\s+([\d+\.]+)\s+V:\s+([\d+\.]+)\s+A-V:'
+
+#
+# Database Routines
+#
+
+def database_connect():
+    """
+    Ensures that the database exists and it contains the proper
+    structure. If the database does not, then it creates the database
+    at version 0. For schema out of data, including a new one, it
+    replays all the schema changes to bring it up to the newest
+    version. If the schema is further than this application, the
+    application quits with an error.
+    """
+
+    # Logging to report the status.
+    log = logging.getLogger("database_connect")
+
+    # Build up the SQL filename. For Unix machines, this will be under
+    # $HOME/.config/mfgames/mfgames-mplayer/. For Windows... no clue.
+    config_directory = os.path.join(
+        os.path.expanduser("~"),
+        '.config',
+        'mfgames',
+        'mfgames-mplayer')
+    log.info('Using configuration directory: ' + config_directory)
+
+    # Make sure the directory exists.
+    if not os.path.isdir(config_directory):
+        log.info('Creating configuration directory')
+        os.makedirs(config_directory)
+
+    # Open a connection to the sqlite3 database, creating if needed.
+    db_path = os.path.join(config_directory, 'history.sqlite3')
+    is_new = False
+
+    if not os.path.isfile(db_path):
+        log.info('Creating initial database file')
+        is_new = True
+
+    db = sqlite3.connect(db_path)
+
+    # Create the initial database, if needed
+    if is_new:
+        create_database_structure(db)
+
+    # Check the database schema for needed updates
+    schema_version = get_database_schema(db)
+    log.info('Current database version: ' + format(schema_version))
+
+    # Return the resulting database
+    return db
+
+def create_database_structure(db):
+    """Creates the initial table structure for the database."""
+
+    # Get the cursor
+    cursor = db.cursor()
+
+    # Create the schema table
+    cursor.execute('CREATE TABLE schema (version INTEGER)')
+    cursor.execute('INSERT INTO schema VALUES(1)')
+
+    # Create the bookmark table
+    cursor.execute('CREATE TABLE bookmark ('
+        + 'path TEXT, position REAL, duration REAL)')
+
+    # Commit the chanegs
+    db.commit()
+    cursor.close()
+
+def get_database_schema(db):
+    """Retrieves the database schema version."""
+
+    cursor = db.cursor()
+    cursor.execute('SELECT version FROM schema')
+    results = cursor.fetchone()
+    cursor.close()
+    return results[0]
+
+#
+# Playback
+#
+
+def do_play(args, db):
+    """
+    Plays the given media file, potentially resuming at the last position.
+    """
+
+    # Logging to report the status.
+    log = logging.getLogger("play")
+
+    # Keep track of the absolute path since we use that for storing
+    # the bookmark information, with a bit of SQL protection.
+    filename = os.path.abspath(args.file)
+    lookup = filename.replace("'", '')
+
+    # Determine if we have a bookmark already in the file.
+    cursor = db.cursor()
+    cursor.execute('SELECT position, duration FROM bookmark '
+        + "WHERE path='" + lookup + "'")
+    dbrow = cursor.fetchone()
+    cursor.close()
+
+    seconds = 0.0
+    duration = 0.0
+
+    if dbrow != None:
+        seconds = dbrow[0]
+        duration = dbrow[1]
+        log.info("Loaded position: " + format(seconds)
+            + ' of ' + format(duration))
+
+    # Build up the basic commands in a list. We include the -msgmodule
+    # line so each status line shows up on its own line. We also
+    # increase the verbosity of everything so it forces the status
+    # line to break into a new line.
+    commands = [PLAYER_CMD]
+    commands.append('-msgmodule')
+    commands.append('-msglevel')
+    commands.append('all=8')
+
+    # If we have a position, use it.
+    if seconds > 0:
+        commands.append('-ss')
+        commands.append(format(seconds))
+
+    # Start the MPlayer process with the gathered commands. We open a
+    # pipe to the output since we use that to scan for the current
+    # position inside the file.
+    commands.append(filename)
+    process = subprocess.Popen(
+        commands,
+        shell=False,
+        close_fds=True,
+        bufsize=0,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT)
+
+    # Loop through the output of the MPlayer, looking for position
+    # data. This is the status line, which looks like this:
+    #   A: (\d+.\d+) V: (\d+.\d+)...
+    # The status line will only be displayed once at quitting when running
+    # in this mode (without shell).
+    for line in process.stdout:
+        # Debugging to show the line.
+        #print line.strip()
+
+        # See if we have a duration line. We need search since this
+        # isn't the starting point of the line.
+        match = re.search("duration: ([\d\.]+)s", line, re.MULTILINE)
+
+        if match != None:
+            duration = max(duration, float(match.group(1)))
+
+        # Use the regex to see if we have a match on this line.
+        match = re.match(STATUS_REGEX, line, re.MULTILINE)
+
+        if match != None:
+            # We have a match on the line, so pull out the groups and
+            # convert them into floats of seconds. We take the lowest
+            # offset as our new position.
+            seconds = min(float(match.group(1)), float(match.group(2)))
+
+            # Adjust the duration if we exceed it for some reason.
+            duration = max(duration, seconds)
+
+    process.stdout.close()
+
+    # Figure out the position in the file. This is parsed from the
+    # statusline messages. We also shift back slightly to handle the
+    # fact that MPlayer doesn't have good seeking.
+    seconds = max(0, seconds - SAVE_OFFSET_SECONDS)
+    log.info(
+        "Saved position: "
+        + format(seconds)
+        + " of "
+        + format(duration))
+
+    # Save the position into the database.
+    cursor = db.cursor()
+    cursor.execute("DELETE FROM bookmark WHERE path='" + lookup + "'")
+    cursor.execute("INSERT INTO bookmark VALUES ('" + lookup + "',"
+        + format(seconds) + "," + format(duration) + ")")
+    cursor.close()
+    db.commit()
+
+#
+# Initialization
+#
+
+# Arguments
+parser = argparse.ArgumentParser(
+    description='Wraps mplayer with various options.')
+subparsers = parser.add_subparsers()
+
+play_parser = subparsers.add_parser('play')
+play_parser.set_defaults(function=do_play)
+play_parser.add_argument(
+    'file',
+    type=str,
+    help='Media path to play in mplayer')
+
+args = parser.parse_args()
+
+# Logging
+logging.basicConfig(level=logging.DEBUG)
+#level=logging.DEBUG, INFO, etc
+#filename=LOG_FILENAME
+
+# Database
+db = database_connect()
+
+# Execute the commands selected by the parser.
+results = args.function(args, db)
+
+# Cleanup and shutdown
+db.close()

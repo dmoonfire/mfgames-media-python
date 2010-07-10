@@ -1,0 +1,30 @@
+#!/usr/bin/python -tt
+
+# Imports
+import argparse
+import sys
+
+#
+# Argument Parsing
+#
+
+# create the parser
+parser = argparse.ArgumentParser(
+    description='Sum the integers on the command line.')
+
+# add the arguments
+parser.add_argument(
+    'integers', metavar='int', type=int, nargs='+',
+    help='one of the integers to be summed')
+parser.add_argument(
+    '--log', type=argparse.FileType('w'), default=sys.stdout,
+    help='the file where the sum should be written '
+    '(default: write the sum to stdout)')
+
+# mfgames-tellico
+
+#def main():
+args = parser.parse_args();
+
+args.log.write("Byte me");
+args.log.close();
