@@ -16,7 +16,10 @@ import time
 # Constants
 DATABASE_SCHEMA = 1
 PLAYER_CMD = "/usr/bin/mplayer"
+
 SAVE_OFFSET_SECONDS = 5
+END_OF_FILE = 30
+
 STATUS_REGEX = 'STATUSLINE: A:\s+([\d+\.]+)\s+V:\s+([\d+\.]+)\s+A-V:'
 
 #
@@ -126,10 +129,17 @@ def do_play(args, db):
     duration = 0.0
 
     if dbrow != None:
+        # Pull the positional data for this file.
         seconds = dbrow[0]
         duration = dbrow[1]
         log.info("Loaded position: " + format(seconds)
             + ' of ' + format(duration))
+
+        # If we are within a certain distance from the end, we reset
+        # it since the last view probably was to the end.
+        if (seconds + END_OF_FILE > duration)
+            log.info('Resetting to beginning')
+            seconds = 0
 
     # Build up the basic commands in a list. We include the -msgmodule
     # line so each status line shows up on its own line. We also
