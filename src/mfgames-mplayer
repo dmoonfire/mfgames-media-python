@@ -210,10 +210,12 @@ def do_play(args, db):
     # Save the position into the database.
     cursor = db.cursor()
     cursor.execute("DELETE FROM bookmark WHERE path='" + lookup + "'")
+    db.commit()
+
     cursor.execute("INSERT INTO bookmark VALUES ('" + lookup + "',"
         + format(seconds) + "," + format(duration) + ")")
-    cursor.close()
     db.commit()
+    cursor.close()
 
 #
 # Initialization
