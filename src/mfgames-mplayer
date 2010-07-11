@@ -137,7 +137,7 @@ def do_play(args, db):
 
         # If we are within a certain distance from the end, we reset
         # it since the last view probably was to the end.
-        if (seconds + END_OF_FILE > duration)
+        if duration > 0.0 and (seconds + END_OF_FILE) > duration:
             log.info('Resetting to beginning')
             seconds = 0
 
