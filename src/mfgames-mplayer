@@ -140,6 +140,7 @@ def do_play(args, db):
         if duration > 0.0 and (seconds + END_OF_FILE) > duration:
             log.info('Resetting to beginning')
             seconds = 0
+    # end if
 
     # Build up the basic commands in a list. We include the -msgmodule
     # line so each status line shows up on its own line. We also
@@ -154,6 +155,7 @@ def do_play(args, db):
     if seconds > 0:
         commands.append('-ss')
         commands.append(format(seconds))
+    # end if
 
     # Start the MPlayer process with the gathered commands. We open a
     # pipe to the output since we use that to scan for the current
@@ -194,6 +196,8 @@ def do_play(args, db):
 
             # Adjust the duration if we exceed it for some reason.
             duration = max(duration, seconds)
+        # end if
+    # end for
 
     process.stdout.close()
 
