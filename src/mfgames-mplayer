@@ -21,7 +21,7 @@ PLAYER_CMD = "/usr/bin/mplayer"
 SAVE_OFFSET_SECONDS = 5
 END_OF_FILE = 30
 
-STATUS_REGEX = 'STATUSLINE: A:\s+([\d+\.]+)\s+V:\s+([\d+\.]+)\s+A-V:'
+STATUS_REGEX = 'STATUSLINE: A:\s*([\d+\.]+)\s+V:\s*([\d+\.]+)\s+A-V:'
 
 LOG_FORMAT = "%(asctime)-15s %(message)s"
 DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
@@ -66,6 +66,7 @@ def database_connect():
         is_new = True
 
     db = sqlite3.connect(db_path)
+    db.isolation_level = None
 
     # Create the initial database, if needed
     if is_new:
@@ -81,20 +82,13 @@ def database_connect():
 def create_database_structure(db):
     """Creates the initial table structure for the database."""
 
-    # Get the cursor
-    cursor = db.cursor()
-
     # Create the schema table
-    cursor.execute('CREATE TABLE schema (version INTEGER)')
-    cursor.execute('INSERT INTO schema VALUES(1)')
+    db.execute('CREATE TABLE schema (version INTEGER)')
+    db.execute('INSERT INTO schema VALUES(1)')
 
     # Create the bookmark table
-    cursor.execute('CREATE TABLE bookmark ('
+    db.execute('CREATE TABLE bookmark ('
         + 'path TEXT, position REAL, duration REAL, timestamp TEXT)')
-
-    # Commit the chanegs
-    db.commit()
-    cursor.close()
 
 def get_database_schema(db):
     """Retrieves the database schema version."""
@@ -115,7 +109,7 @@ def do_list(args, db):
     """
 
     # Create the SQL statement to retrieve the data.
-    count = 0;
+    count = 0
 
     cursor = db.cursor()
     cursor.execute('SELECT path, position, duration, timestamp'
@@ -127,6 +121,7 @@ def do_list(args, db):
     print '======== ======== =================== ========'
 
     for row in cursor:
+        count = count + 1
         print(
             '{1:>8.1f} {2:>8.1f} {3} {0}'.
             format(row[0], row[1], row[2], row[3]))
@@ -234,7 +229,7 @@ def do_play(args, db):
     # in this mode (without shell).
     for line in process.stdout:
         # Debugging to show the line.
-        #print line.strip()
+        #log.debug(line.strip())
 
         # See if we have a duration line. We need search since this
         # isn't the starting point of the line.
@@ -254,6 +249,9 @@ def do_play(args, db):
 
             # Adjust the duration if we exceed it for some reason.
             duration = max(duration, seconds)
+
+            # Report the results to the log.
+            #log.info('New position: ' + format(seconds))
         # end if
     # end for
 
@@ -270,24 +268,20 @@ def do_play(args, db):
         + format(duration))
 
     # Save or update the position into the database.
-    cursor = db.cursor()
     now = datetime.utcnow().strftime(DATETIME_FORMAT)
 
     if dbrow != None:
-        cursor.execute("UPDATE bookmark SET "
+        db.execute("UPDATE bookmark SET "
             + "position = " + format(seconds) + ","
             + "duration = " + format(duration) + ","
             + "timestamp = '" + now + "'"
             + " WHERE path = '" + lookup + "'");
     else:
-        cursor.execute("INSERT INTO bookmark VALUES ("
+        db.execute("INSERT INTO bookmark VALUES ("
             + "'" + lookup + "',"
             + format(seconds) + ","
             + format(duration) + ","
             + "'" + now + "'" + ")")
-
-    db.commit()
-    cursor.close()
 
 #
 # Initialization
