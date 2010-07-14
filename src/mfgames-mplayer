@@ -5,12 +5,13 @@
 #
 
 # Imports
+from datetime import datetime
 import argparse
 import logging
 import os
 import re
-import subprocess
 import sqlite3
+import subprocess
 import time
 
 # Constants
@@ -21,6 +22,9 @@ SAVE_OFFSET_SECONDS = 5
 END_OF_FILE = 30
 
 STATUS_REGEX = 'STATUSLINE: A:\s+([\d+\.]+)\s+V:\s+([\d+\.]+)\s+A-V:'
+
+LOG_FORMAT = "%(asctime)-15s %(message)s"
+DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 #
 # Database Routines
@@ -86,7 +90,7 @@ def create_database_structure(db):
 
     # Create the bookmark table
     cursor.execute('CREATE TABLE bookmark ('
-        + 'path TEXT, position REAL, duration REAL)')
+        + 'path TEXT, position REAL, duration REAL, timestamp TEXT)')
 
     # Commit the chanegs
     db.commit()
@@ -100,6 +104,40 @@ def get_database_schema(db):
     results = cursor.fetchone()
     cursor.close()
     return results[0]
+
+#
+# Listing
+#
+
+def do_list(args, db):
+    """
+    Lists all files and their position and last access timestamp.
+    """
+
+    # Create the SQL statement to retrieve the data.
+    count = 0;
+
+    cursor = db.cursor()
+    cursor.execute('SELECT path, position, duration, timestamp'
+        + ' FROM bookmark'
+        + ' ORDER BY path')
+
+    # Loop through the rows and format it as output.
+    print 'Position Duration Last Access         Filename'
+    print '======== ======== =================== ========'
+
+    for row in cursor:
+        print(
+            '{1:>8.1f} {2:>8.1f} {3} {0}'.
+            format(row[0], row[1], row[2], row[3]))
+
+    # Close the cursor and give a line to indicate we are done.
+    cursor.close()
+    
+    if count == 1:
+        print("Found 1 entry.")
+    else:
+        print("Found " + format(count) + " entries.")
 
 #
 # Playback
@@ -120,8 +158,9 @@ def do_play(args, db):
 
     # Determine if we have a bookmark already in the file.
     cursor = db.cursor()
-    cursor.execute('SELECT position, duration FROM bookmark '
-        + "WHERE path='" + lookup + "'")
+    cursor.execute('SELECT position, duration, timestamp'
+        + ' FROM bookmark'
+        + " WHERE path='" + lookup + "'")
     dbrow = cursor.fetchone()
     cursor.close()
 
@@ -132,12 +171,30 @@ def do_play(args, db):
         # Pull the positional data for this file.
         seconds = dbrow[0]
         duration = dbrow[1]
+        last = dbrow[2]
         log.info("Loaded position: " + format(seconds)
-            + ' of ' + format(duration))
+            + 's of ' + format(duration)
+            + 's from ' + last)
+
+        reset = False
+
+        # Ignore bookmarks near the end of the file.
+        if duration > 0.0 and (seconds + END_OF_FILE) > duration:
+            log.info('Within ' + format(END_OF_FILE) + ' of file end')
+            reset = True
+
+        # Ignore records that are over a month long.
+        then = datetime.strptime(last, DATETIME_FORMAT)
+        how_long = datetime.utcnow() - then
+
+        if how_long.days > 30:
+            log.info('Been ' + format(how_long.days)
+                + ' days since last accessed')
+            reset = True
 
         # If we are within a certain distance from the end, we reset
         # it since the last view probably was to the end.
-        if duration > 0.0 and (seconds + END_OF_FILE) > duration:
+        if reset:
             log.info('Resetting to beginning')
             seconds = 0
     # end if
@@ -160,6 +217,7 @@ def do_play(args, db):
     # Start the MPlayer process with the gathered commands. We open a
     # pipe to the output since we use that to scan for the current
     # position inside the file.
+    log.info('Playing ' + filename)
     commands.append(filename)
     process = subprocess.Popen(
         commands,
@@ -211,13 +269,23 @@ def do_play(args, db):
         + " of "
         + format(duration))
 
-    # Save the position into the database.
+    # Save or update the position into the database.
     cursor = db.cursor()
-    cursor.execute("DELETE FROM bookmark WHERE path='" + lookup + "'")
-    db.commit()
+    now = datetime.utcnow().strftime(DATETIME_FORMAT)
 
-    cursor.execute("INSERT INTO bookmark VALUES ('" + lookup + "',"
-        + format(seconds) + "," + format(duration) + ")")
+    if dbrow != None:
+        cursor.execute("UPDATE bookmark SET "
+            + "position = " + format(seconds) + ","
+            + "duration = " + format(duration) + ","
+            + "timestamp = '" + now + "'"
+            + " WHERE path = '" + lookup + "'");
+    else:
+        cursor.execute("INSERT INTO bookmark VALUES ("
+            + "'" + lookup + "',"
+            + format(seconds) + ","
+            + format(duration) + ","
+            + "'" + now + "'" + ")")
+
     db.commit()
     cursor.close()
 
@@ -230,8 +298,11 @@ parser = argparse.ArgumentParser(
     description='Wraps mplayer with various options.')
 subparsers = parser.add_subparsers()
 
+list_parser = subparsers.add_parser('list')
+list_parser.set_defaults(function = do_list)
+
 play_parser = subparsers.add_parser('play')
-play_parser.set_defaults(function=do_play)
+play_parser.set_defaults(function = do_play)
 play_parser.add_argument(
     'file',
     type=str,
@@ -240,7 +311,7 @@ play_parser.add_argument(
 args = parser.parse_args()
 
 # Logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(format=LOG_FORMAT, level=logging.DEBUG)
 #level=logging.DEBUG, INFO, etc
 #filename=LOG_FILENAME
 
