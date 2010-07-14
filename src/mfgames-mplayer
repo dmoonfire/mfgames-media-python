@@ -14,16 +14,20 @@ import sqlite3
 import subprocess
 import time
 
+#
 # Constants
-DATABASE_SCHEMA = 1
-PLAYER_CMD = "/usr/bin/mplayer"
+#
 
-SAVE_OFFSET_SECONDS = 5
-END_OF_FILE = 30
+# Schema used to identify the current file structure.
+DATABASE_SCHEMA = 2
 
+# Regex used to identify a status line from the mplayer output.
 STATUS_REGEX = 'STATUSLINE: A:\s*([\d+\.]+)\s+V:\s*([\d+\.]+)\s+A-V:'
 
-LOG_FORMAT = "%(asctime)-15s %(message)s"
+# Format of the log messages.
+LOG_FORMAT = "%(asctime)-15s %(name)-8s %(levelname)-5s %(message)s"
+
+# Format of the data stored in the file.
 DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 #
@@ -41,7 +45,7 @@ def database_connect():
     """
 
     # Logging to report the status.
-    log = logging.getLogger("database_connect")
+    log = logging.getLogger("database")
 
     # Build up the SQL filename. For Unix machines, this will be under
     # $HOME/.config/mfgames/mfgames-mplayer/. For Windows... no clue.
@@ -74,7 +78,15 @@ def database_connect():
 
     # Check the database schema for needed updates
     schema_version = get_database_schema(db)
-    log.info('Current database version: ' + format(schema_version))
+    log.info('Current database schema version: ' + format(schema_version))
+
+    if schema_version > DATABASE_SCHEMA:
+        log.error("Current file schema exceeds the program's schema of "
+            + format(DATABASE_SCHEMA) + "!")
+        exit(1)
+
+    if schema_version < DATABASE_SCHEMA:
+        upgrade_schema(db, schema_version)
 
     # Return the resulting database
     return db
@@ -83,12 +95,35 @@ def create_database_structure(db):
     """Creates the initial table structure for the database."""
 
     # Create the schema table
-    db.execute('CREATE TABLE schema (version INTEGER)')
-    db.execute('INSERT INTO schema VALUES(1)')
+    db.execute('CREATE TABLE schema (version INTEGER);')
+    db.execute('INSERT INTO schema VALUES(1);')
 
     # Create the bookmark table
     db.execute('CREATE TABLE bookmark ('
-        + 'path TEXT, position REAL, duration REAL, timestamp TEXT)')
+        + 'path TEXT, position REAL, duration REAL, timestamp TEXT);')
+
+def upgrade_schema(db, schema_version):
+    """
+    Upgrades the schema of the settings file to the current version. This
+    runs the various upgrades sequentially until the system is brought up
+    to the proper version.
+    """
+
+    log = logging.getLogger("schema")
+
+    # Version 2 adds a settings/configuration table.
+    if schema_version < 2:
+        # Perform the steps to upgrade the schema.
+        log.info("Upgrading schema to version 2")
+        db.execute("CREATE TABLE settings (name TEXT, value TEXT);")
+        db.execute("INSERT INTO settings VALUES('rewind_seconds', 5);")
+        db.execute("INSERT INTO settings VALUES('end_of_buffer_reset', 60);")
+        db.execute(
+            "INSERT INTO settings VALUES('program', '/usr/bin/mplayer');")
+
+        # Update the current version of the schema.
+        db.execute("UPDATE schema SET version = 2;")
+        schema_version = 2
 
 def get_database_schema(db):
     """Retrieves the database schema version."""
@@ -98,6 +133,20 @@ def get_database_schema(db):
     results = cursor.fetchone()
     cursor.close()
     return results[0]
+
+def get_setting(db, name):
+    """Retrieves a settings value from the database."""
+
+    cursor = db.cursor()
+    cursor.execute("SELECT value FROM settings WHERE name='" + name + "';")
+    results = cursor.fetchone()
+    cursor.close()
+    return results[0]
+
+def get_setting_float(db, name):
+    """Retrieves a setting as a float value."""
+
+    return float(get_setting(db, name))
 
 #
 # Listing
@@ -174,8 +223,10 @@ def do_play(args, db):
         reset = False
 
         # Ignore bookmarks near the end of the file.
-        if duration > 0.0 and (seconds + END_OF_FILE) > duration:
-            log.info('Within ' + format(END_OF_FILE) + ' of file end')
+        end_of_buffer_reset = get_setting_float(db, 'end_of_buffer_reset')
+
+        if duration > 0.0 and (seconds + end_of_buffer_reset) > duration:
+            log.info('Within ' + format(end_of_buffer_reset) + ' of file end')
             reset = True
 
         # Ignore records that are over a month long.
@@ -198,7 +249,7 @@ def do_play(args, db):
     # line so each status line shows up on its own line. We also
     # increase the verbosity of everything so it forces the status
     # line to break into a new line.
-    commands = [PLAYER_CMD]
+    commands = [get_setting(db, 'program')]
     commands.append('-msgmodule')
     commands.append('-msglevel')
     commands.append('all=8')
@@ -260,7 +311,8 @@ def do_play(args, db):
     # Figure out the position in the file. This is parsed from the
     # statusline messages. We also shift back slightly to handle the
     # fact that MPlayer doesn't have good seeking.
-    seconds = max(0, seconds - SAVE_OFFSET_SECONDS)
+    rewind_seconds = get_setting_float(db, 'rewind_seconds')
+    seconds = max(0, seconds - rewind_seconds)
     log.info(
         "Saved position: "
         + format(seconds)
