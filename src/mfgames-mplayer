@@ -152,6 +152,43 @@ def get_setting_float(db, name):
 # Listing
 #
 
+def do_config(args, db):
+    """
+    Lists all configuration settings within the file.
+    """
+
+    # If we have a first parameter, then we just filter for that one.
+    where = ''
+
+    if args.name != None:
+        where = " WHERE name='" + args.name + "'"
+
+    # If we have the second parameter, we want to set the value first.
+    if args.value != None:
+        db.execute("UPDATE settings SET value='" + args.value
+            + "' WHERE name='" + args.name + "';")
+
+    # Create the SQL statement to retrieve the data.
+    cursor = db.cursor()
+    cursor.execute('SELECT name, value FROM settings'
+        + where + ' ORDER BY name;')
+
+    # Loop through the rows and format it as output.
+    print 'Name                  Value'
+    print '===================== ============================'
+
+    for row in cursor:
+        print(
+            '{0:>21s} {1}'.
+            format(row[0], row[1]))
+
+    # Close the cursor and give a line to indicate we are done.
+    cursor.close()
+
+#
+# Listing
+#
+
 def do_list(args, db):
     """
     Lists all files and their position and last access timestamp.
@@ -343,6 +380,21 @@ def do_play(args, db):
 parser = argparse.ArgumentParser(
     description='Wraps mplayer with various options.')
 subparsers = parser.add_subparsers()
+
+config_parser = subparsers.add_parser('config')
+config_parser.set_defaults(function = do_config)
+config_parser.add_argument(
+    'name',
+    type=str,
+    nargs='?',
+    default=None,
+    help='Name of configuration setting to display or set.')
+config_parser.add_argument(
+    'value',
+    type=str,
+    nargs='?',
+    default=None,
+    help='Value to set the configuration.')
 
 list_parser = subparsers.add_parser('list')
 list_parser.set_defaults(function = do_list)
