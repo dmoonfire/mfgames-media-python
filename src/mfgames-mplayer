@@ -379,11 +379,14 @@ def has_record_expired(db, dbrow):
     duration = dbrow[1]
     last = dbrow[2]
 
+    # If we are at the beginning, it is effectively expired.
+    if seconds < 0.1:
+        return True
+
     # Ignore bookmarks near the end of the file.
     end_of_buffer_reset = get_setting_float(db, 'end_of_buffer_reset')
     
     if duration > 0.0 and (seconds + end_of_buffer_reset) > duration:
-        log.info('Within ' + format(end_of_buffer_reset) + ' s of file end')
         return True
 
     # Ignore records that are over a month long.
@@ -391,8 +394,6 @@ def has_record_expired(db, dbrow):
     how_long = datetime.utcnow() - then
 
     if how_long.days > get_setting_float(db, 'expire_days'):
-        log.info('Been ' + format(how_long.days)
-            + ' days since last accessed')
         return True
 
     # The record has not expired.
