@@ -19,7 +19,7 @@ import time
 #
 
 # Schema used to identify the current file structure.
-DATABASE_SCHEMA = 2
+DATABASE_SCHEMA = 3
 
 # Regex used to identify a status line from the mplayer output.
 STATUS_REGEX = 'STATUSLINE: A:\s*([\d+\.]+)\s+V:\s*([\d+\.]+)\s+A-V:'
@@ -125,6 +125,16 @@ def upgrade_schema(db, schema_version):
         db.execute("UPDATE schema SET version = 2;")
         schema_version = 2
 
+    # Version 3 moves a missing field into the configuration.
+    if schema_version < 3:
+        # Perform the steps for the upgrade.
+        log.info("Upgrading schema to version 3")
+        db.execute("INSERT INTO settings VALUES('expire_days', 30);")
+
+        # update the current version of the schema.
+        db.execute("UPDATE schema SET version = 3;")
+        schema_version = 3
+
 def get_database_schema(db):
     """Retrieves the database schema version."""
 
@@ -198,19 +208,28 @@ def do_list(args, db):
     count = 0
 
     cursor = db.cursor()
-    cursor.execute('SELECT path, position, duration, timestamp'
+    cursor.execute('SELECT position, duration, timestamp, path'
         + ' FROM bookmark'
         + ' ORDER BY path')
 
     # Loop through the rows and format it as output.
-    print 'Position Duration Last Access         Filename'
-    print '======== ======== =================== ========'
+    print 'Position Duration Last Access         State   Filename'
+    print '======== ======== =================== ======= ========'
 
     for row in cursor:
+        # Keep track of the number of records we have.
         count = count + 1
+
+        # Figure out the formatted state.
+        state = ''
+
+        if has_record_expired(db, row):
+            state = 'Expired'
+
+        # Print the results.
         print(
-            '{1:>8.1f} {2:>8.1f} {3} {0}'.
-            format(row[0], row[1], row[2], row[3]))
+            '{1:>8.1f} {2:>8.1f} {3} {4:<7} {0}'.
+            format(row[3], row[0], row[1], row[2], state))
 
     # Close the cursor and give a line to indicate we are done.
     cursor.close()
@@ -257,27 +276,9 @@ def do_play(args, db):
             + 's of ' + format(duration)
             + 's from ' + last)
 
-        reset = False
-
-        # Ignore bookmarks near the end of the file.
-        end_of_buffer_reset = get_setting_float(db, 'end_of_buffer_reset')
-
-        if duration > 0.0 and (seconds + end_of_buffer_reset) > duration:
-            log.info('Within ' + format(end_of_buffer_reset) + ' of file end')
-            reset = True
-
-        # Ignore records that are over a month long.
-        then = datetime.strptime(last, DATETIME_FORMAT)
-        how_long = datetime.utcnow() - then
-
-        if how_long.days > 30:
-            log.info('Been ' + format(how_long.days)
-                + ' days since last accessed')
-            reset = True
-
-        # If we are within a certain distance from the end, we reset
-        # it since the last view probably was to the end.
-        if reset:
+        # Determine if we need to expire this record.
+        if has_record_expired(db, dbrow):
+            # We need to ignore the contents of this record.
             log.info('Resetting to beginning')
             seconds = 0
     # end if
@@ -371,6 +372,31 @@ def do_play(args, db):
             + format(seconds) + ","
             + format(duration) + ","
             + "'" + now + "'" + ")")
+
+def has_record_expired(db, dbrow):
+    # Pull out the fields from the row.
+    seconds = dbrow[0]
+    duration = dbrow[1]
+    last = dbrow[2]
+
+    # Ignore bookmarks near the end of the file.
+    end_of_buffer_reset = get_setting_float(db, 'end_of_buffer_reset')
+    
+    if duration > 0.0 and (seconds + end_of_buffer_reset) > duration:
+        log.info('Within ' + format(end_of_buffer_reset) + ' s of file end')
+        return True
+
+    # Ignore records that are over a month long.
+    then = datetime.strptime(last, DATETIME_FORMAT)
+    how_long = datetime.utcnow() - then
+
+    if how_long.days > get_setting_float(db, 'expire_days'):
+        log.info('Been ' + format(how_long.days)
+            + ' days since last accessed')
+        return True
+
+    # The record has not expired.
+    return False
 
 #
 # Initialization
