@@ -40,7 +40,7 @@ def do_resolve(args, mythtv):
     # See if we can parse the line with regular expressions to pull
     # out the data we need. We don't have a simplified lookup for
     # internal references like these.
-    regex = r"myth:/(\w+)\@(.*?)/(.*)$"
+    regex = r"myth:/+(\w+)\@(.*?)/(.*)$"
     match = re.search(regex, args.path)
     
     if match == None:
