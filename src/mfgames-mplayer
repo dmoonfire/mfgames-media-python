@@ -1,18 +1,20 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 #
-# Setup
-#
-
 # Imports
+#
+
+# System Imports
 from datetime import datetime
 import argparse
 import logging
 import os
 import re
-import sqlite3
 import subprocess
 import time
+
+# External Imports
+import sqlite3
 
 #
 # Constants

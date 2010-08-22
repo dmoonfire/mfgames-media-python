@@ -1,0 +1,117 @@
+#!/usr/bin/env python
+
+#
+# Imports
+#
+
+# System Imports
+import argparse
+import logging
+import os
+import re
+import sys
+
+# External Imports
+import MythTV
+
+#
+# Constants
+#
+
+LOG_FORMAT = "%(asctime)-15s %(message)s"
+
+#
+# Resolve
+#
+
+def do_resolve(args, mythtv):
+    """
+    Takes a MythTV streaming path and attempts to resolve it to an
+    absolute filename. This exits the program with 0 for successful or
+    1 if it could not resolve it.
+    """
+
+    # Check to see if the path is already a filename. If it is and it
+    # exists, then just return a successful absolute path.
+    if os.path.exists(args.path):
+        print os.path.abspath(args.path)
+        exit(0)
+
+    # See if we can parse the line with regular expressions to pull
+    # out the data we need. We don't have a simplified lookup for
+    # internal references like these.
+    regex = r"myth:/(\w+)\@(.*?)/(.*)$"
+    match = re.search(regex, args.path)
+    
+    if match == None:
+        print args.path
+        exit(1)
+
+    group = match.group(1)
+    host = match.group(2)
+    path = match.group(3)
+
+    # Get a list of storage groups applicable for this group. Then, go
+    # through each one and look at the local ones to determine if we
+    # can resolve this path.
+    storages = mythtv.getStorageGroup(groupname = group)
+
+    for storage in storages:
+        if storage.local:
+            # We are local, so combine the two paths together and
+            # attempt to resolve the filename.
+            testpath = os.path.join(storage.dirname, path)
+
+            if os.path.exists(testpath):
+                print os.path.abspath(testpath)
+                exit(0)
+
+    # If we got down to this point, we couldn't figure out how to
+    # resolve the path through the storage groups.
+    print args.path
+    exit(1)
+
+#
+# Entry
+#
+
+def do_mythtv_tool(arguments):
+    """
+    Main entry point into the application.
+    """
+
+    # Set up the primary parser.
+    parser = argparse.ArgumentParser(
+        description='Query and settings for MythTV.')
+    
+    # Add the various subparsers.
+    subparsers = parser.add_subparsers()
+
+    # Set up `resolve`
+    resolve_parser = subparsers.add_parser(
+        'resolve')
+    resolve_parser.set_defaults(func=do_resolve)
+    resolve_parser.add_argument(
+        'path',
+        type=str,
+        help='Input path for the streaming resource.')
+
+    # Connect to MythTV
+    MythTV.MythLog._setlevel('none')
+    mythtv = MythTV.MythDB()
+
+    # Process the arguments given on the command line.
+    args = parser.parse_args(arguments)
+
+    # Set up the logging to use a common format.
+    logging.basicConfig(
+        format = LOG_FORMAT,
+        level = logging.DEBUG)
+
+    # Use the default to figure out the process name which is then
+    # used to call the process() method in that Process class.
+    args.func(args, mythtv)
+
+if __name__ == "__main__":
+    do_mythtv_tool(sys.argv[1:])
+
