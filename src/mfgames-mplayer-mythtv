@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# Attempt to resolve the filename which may be a MythTV streaming source.
+realpath=$(mfgames-mythtv resolve "$1")
+
+# If we successfully found a file, then play it.
+if [ $? == 0 ]
+then
+    mfgames-mplayer play "$realpath"
+fi
+
+# TODO: In a perfect world, we would give an error of some sort.

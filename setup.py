@@ -19,6 +19,7 @@ setup(
     url='http://mfgames.com/mfgames-media',
     scripts=[
         'src/mfgames-mplayer',
+        'src/mfgames-mplayer-mythtv',
         'src/mfgames-mythtv',
         ],
 #    data_files=[
