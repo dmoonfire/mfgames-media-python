@@ -161,6 +161,39 @@ def get_setting_float(db, name):
     return float(get_setting(db, name))
 
 #
+# Clear
+#
+
+def do_clear(args, db):
+    """
+    Clears all the records.
+    """
+
+    # Create the SQL statement to retrieve the data.
+    count = 0
+
+    cursor = db.cursor()
+    cursor.execute('SELECT position, duration, timestamp, path'
+        + ' FROM bookmark'
+        + ' ORDER BY path')
+
+    # Loop through the rows and get a list of files that need to be removed.
+    filenames = list()
+
+    for row in cursor:
+        filenames.append(row[3])
+
+    cursor.close()
+
+    # Loop through all the files and delete them from the database.
+    for filename in filenames:
+        # Print out the filename
+        print(filename)
+
+        # Delete it from the database.
+        db.execute("DELETE FROM bookmark WHERE path = '" + filename + "'")
+
+#
 # Listing
 #
 
@@ -461,6 +494,9 @@ config_parser.add_argument(
 
 list_parser = subparsers.add_parser('list')
 list_parser.set_defaults(function = do_list)
+
+clear_parser = subparsers.add_parser('clear')
+clear_parser.set_defaults(function = do_clear)
 
 expire_parser = subparsers.add_parser('expire')
 expire_parser.set_defaults(function = do_expire)
