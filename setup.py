@@ -1,15 +1,8 @@
 #!/usr/bin/env python
 
-#
-# Imports
-#
 
-# System Imports
 from distutils.core import setup
 
-#
-# Setup
-#
 
 setup(
     name='mfgames-media',
@@ -21,11 +14,16 @@ setup(
         'src/mfgames-mplayer',
         'src/mfgames-mplayer-mythtv',
         'src/mfgames-mythtv',
+        'src/mfgames-tellico',
         ],
-#    data_files=[
-#        ('share/mfgames-media/media', [
-#            'src/media/__init__.py',
-#            'src/media/some_file.py',
-#            ]),
-#        ],
+    data_files=[
+        ('share/mfgames-media/mfgames',
+         ['src/mfgames/media/__init__.py',
+         ]),
+        ('share/mfgames-media/mfgames/media',
+         ['src/mfgames/media/__init__.py',
+          'src/mfgames/media/process.py',
+          'src/mfgames/media/tellico.py',
+         ]),
+        ]
     )
