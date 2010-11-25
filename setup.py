@@ -13,17 +13,13 @@ setup(
     scripts=[
         'src/mfgames-mplayer',
         'src/mfgames-mplayer-mythtv',
-        'src/mfgames-mythtv',
-        'src/mfgames-tellico',
+#        'src/mfgames-mythtv',
+#        'src/mfgames-tellico',
         ],
-    data_files=[
-        ('share/mfgames-media/mfgames',
-         ['src/mfgames/media/__init__.py',
-         ]),
-        ('share/mfgames-media/mfgames/media',
-         ['src/mfgames/media/__init__.py',
-          'src/mfgames/media/process.py',
-          'src/mfgames/media/tellico.py',
-         ]),
-        ]
+#    data_files=[
+#        ('share/mfgames-media/media',
+#         ['src/media/__init__.py',
+#          'src/media/tellico.py',
+#         ]),
+#        ]
     )
