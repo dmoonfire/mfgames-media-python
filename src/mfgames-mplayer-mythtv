@@ -70,9 +70,8 @@ def create_text():
 
 def play_video(filename, state):
     state.root.lower()
-    #mfgames.media.mplayer.do_mplayer_tool(["play", filename])
-    #state.root.destroy()
-    state.root.after(1000, lambda: state.root.destroy())
+    mfgames.media.mplayer.do_mplayer_tool(["play", filename])
+    state.root.destroy()
 
 def start_video(filename, state):
     """Starts the video in the given arguments or displays an error
