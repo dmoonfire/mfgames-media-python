@@ -24,5 +24,9 @@ setup(
          ['src/mfgames/media/__init__.py',
           'src/mfgames/media/mplayer.py',
          ]),
+        ('share/mfgames-media/mfgames/tools',
+         ['src/mfgames/tools/__init__.py',
+          'src/mfgames/tools/process.py',
+         ]),
         ]
     )

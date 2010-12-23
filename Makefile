@@ -1,10 +1,11 @@
-PYTHON_FILES = $(shell grep '.py' setup.py | grep -v '^\#' | grep -v 'bin/env' | cut -f 2 -d "'")
+PYTHON_FILES = $(shell grep '.py' setup.py | grep -v 'bin/env' | cut -f 2 -d "'")
 PYTHON_NAMESPACES = $(shell grep '.py' setup.py | grep -v 'bin/env' | cut -f 2 -d "'" | sed 's@/__init__.py@@' | sed 's@.py@@' | sed 's@/@.@g' | cut -c 5-)
 
 all:
 
 install:
 	rm -rf build
+	rm -rf /usr/local/share/mfgames-media
 	python setup.py install
 
 clean:
@@ -16,3 +17,5 @@ check:
 		--include-ids=yes \
 		--disable-msg=R0904,C0103,R0902,R0201,R0903,R0915,R0914 \
 		$(PYTHON_FILES) 2> /dev/null
+
+	cd test && PYTHONPATH=../src ./run_tests.py
