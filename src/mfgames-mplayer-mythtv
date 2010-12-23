@@ -129,4 +129,7 @@ def do_mplayer_mythtv_tool(arguments):
 
 
 if __name__ == "__main__":
-    do_mplayer_mythtv_tool(sys.argv[1:])
+    # MythTV will pass the filename, with spaces, as separate
+    # arguments to this and we need to convert it into spaces. This
+    # does assume that the is not double spaces in filanames.
+    do_mplayer_mythtv_tool([" ".join(sys.argv[1:])])
