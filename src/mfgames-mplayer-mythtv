@@ -68,6 +68,11 @@ def create_text():
         y = y + dy
         color = color + dcolor
 
+def play_video(filename, state):
+    state.root.lower()
+    mfgames.media.mplayer.do_mplayer_tool(["play", filename])
+    state.root.destroy()
+
 def start_video(filename, state):
     """Starts the video in the given arguments or displays an error
     message and times out."""
@@ -83,20 +88,15 @@ def start_video(filename, state):
     # Check to see if the file exists first.
     if os.path.exists(filename):
         # Play the video using the mplayer tool.
-        mfgames.media.mplayer.do_mplayer_tool(["play", filename])
+        state.root.after(500, lambda: play_video(filename, state))
         has_error = False
 
     # If we still have an error, then we couldn't find the video file
-    # to play.
+    # to play. Pause for a short period of time, then close the
+    # window.
     if has_error:
         state.add_line("Cannot find the video file to play!")
-        
-    # If we have an error, then pause for a moment before destroying
-    # the window.
-    if has_error:
         state.root.after(5000, lambda: state.root.destroy())
-    else:
-        state.root.destroy()
 
 def do_mplayer_mythtv_tool(arguments):
     # Create a Tk window and scale it up to the full size of the window.
@@ -124,7 +124,6 @@ def do_mplayer_mythtv_tool(arguments):
 
     # Show the main window
     root.after(0, lambda: start_video(arguments[0], state))
-    root.after(5000, lambda: root.destroy())
     root.mainloop()
 
 
