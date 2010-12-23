@@ -1,13 +1,40 @@
-#!/bin/bash
+#!/usr/bin/python
 
-# Attempt to resolve the filename which may be a MythTV streaming source.
-testpath=$(echo "$@")
-realpath=$(mfgames-mythtv resolve "$testpath")
+import Tkinter
 
-# If we successfully found a file, then play it.
-if [ $? == 0 ]
-then
-    mfgames-mplayer play "$realpath"
-fi
+# Callback that attempts to start the moving on the command-line and
+# if it fails, show and error message for a period of time before
+# quitting. If the movie works, then it just shows that instead.
+def start():
+    root.focus_force();
 
-# TODO: In a perfect world, we would give an error of some sort.
+# Create a Tk window and scale it up to the full size of the window.
+root = Tkinter.Tk()
+screenWidth = root.winfo_screenwidth()
+screenHeight = root.winfo_screenheight()
+
+top = root.winfo_toplevel()
+top.overrideredirect(1)
+top.config(background = 'black')
+top.geometry("{0}x{1}+0+0".format(screenWidth, screenHeight))
+
+# Show the main window
+root.after(1000, lambda: start())
+root.after(5000, lambda: root.destroy())
+root.mainloop()
+
+print "done"
+
+# #!/bin/bash
+
+# # Attempt to resolve the filename which may be a MythTV streaming source.
+# testpath=$(echo "$@")
+# realpath=$(mfgames-mythtv resolve "$testpath")
+
+# # If we successfully found a file, then play it.
+# if [ $? == 0 ]
+# then
+#     mfgames-mplayer play "$realpath"
+# fi
+
+# # TODO: In a perfect world, we would give an error of some sort.

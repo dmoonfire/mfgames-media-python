@@ -16,10 +16,13 @@ setup(
 #        'src/mfgames-mythtv',
 #        'src/mfgames-tellico',
         ],
-#    data_files=[
-#        ('share/mfgames-media/media',
-#         ['src/media/__init__.py',
-#          'src/media/tellico.py',
-#         ]),
-#        ]
+    data_files=[
+        ('share/mfgames-media/mfgames',
+         ['src/mfgames/__init__.py',
+         ]),
+        ('share/mfgames-media/mfgames/media',
+         ['src/mfgames/media/__init__.py',
+          'src/mfgames/media/mplayer.py',
+         ]),
+        ]
     )
