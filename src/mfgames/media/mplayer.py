@@ -63,7 +63,7 @@ def do_mplayer_tool(arguments):
         type=str,
         help='Media path to play in mplayer')
 
-    args = parser.parse_args()
+    args = parser.parse_args(arguments)
     
     # Logging
     logging.basicConfig(format=LOG_FORMAT, level=logging.DEBUG)

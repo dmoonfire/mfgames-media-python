@@ -1,40 +1,132 @@
 #!/usr/bin/python
 
+
+import sys
+import os
 import Tkinter
+import time
 
-# Callback that attempts to start the moving on the command-line and
-# if it fails, show and error message for a period of time before
-# quitting. If the movie works, then it just shows that instead.
-def start():
-    root.focus_force();
+sys.path.append(os.path.dirname(sys.argv[0]))
+sys.path.append('/usr/share/mfgames-media')
+sys.path.append('/usr/local/share/mfgames-media')
 
-# Create a Tk window and scale it up to the full size of the window.
-root = Tkinter.Tk()
-screenWidth = root.winfo_screenwidth()
-screenHeight = root.winfo_screenheight()
+import mfgames.media.mplayer
 
-top = root.winfo_toplevel()
-top.overrideredirect(1)
-top.config(background = 'black')
-top.geometry("{0}x{1}+0+0".format(screenWidth, screenHeight))
 
-# Show the main window
-root.after(1000, lambda: start())
-root.after(5000, lambda: root.destroy())
-root.mainloop()
+class RenderState(object):
+    """Encapsulates the functionality for rendering text to the display."""
 
-print "done"
+    def __init__(self):
+        self.canvas_texts = []
+        self.texts = []
 
-# #!/bin/bash
+    def add_line(self, text):
+        """Adds a text line to the canvas in a manner like World of Goo."""
 
-# # Attempt to resolve the filename which may be a MythTV streaming source.
-# testpath=$(echo "$@")
-# realpath=$(mfgames-mythtv resolve "$testpath")
+        # Delete all the lines currently on screen since I couldn't
+        # figure out how to change text in a canvas "in place".
+        for index in self.canvas_texts:
+            self.canvas.delete(index)
 
-# # If we successfully found a file, then play it.
-# if [ $? == 0 ]
-# then
-#     mfgames-mplayer play "$realpath"
-# fi
+        self.canvas_texts = []
 
-# # TODO: In a perfect world, we would give an error of some sort.
+        # If we have more than 10 items in the text, then pop off the
+        # next one.
+        if len(self.texts) >= 10:
+            self.texts.pop()
+
+        # Add the text to the list of text fields.
+        self.texts.insert(0, text)
+
+        # Display the text on the canvas.
+        x = 20
+        y = self.screen_height - 10
+        color = 255
+
+        delta_y = -55
+        delta_color = -25
+
+        for text in self.texts:
+            # Create a line element inside the canvas.
+            self.canvas_texts.append(
+                self.canvas.create_text(
+                    x,
+                    y,
+                    text=text,
+                    fill="#{0:02X}{0:02X}{0:02X}".format(color),
+                    anchor=Tkinter.SW,
+                    font=('Verdana', 36)))
+
+            # Adjust the various colors and deltas
+            y = y + delta_y
+            color = color + delta_color
+
+
+def create_text():
+    for i in range(10):
+        # Shift the Y offset up so we don't have overlapping lines.
+        y = y + dy
+        color = color + dcolor
+
+def start_video(filename, state):
+    """Starts the video in the given arguments or displays an error
+    message and times out."""
+
+    # Show the file we are trying to open.
+    state.add_line("Trying to start video file...")
+    state.add_line("  " + filename)
+
+    # Keep track if we have an error. If we do, we wait a period of time
+    # then exit out.
+    has_error = True
+    
+    # Check to see if the file exists first.
+    if os.path.exists(filename):
+        # Play the video using the mplayer tool.
+        mfgames.media.mplayer.do_mplayer_tool(["play", filename])
+        has_error = False
+
+    # If we still have an error, then we couldn't find the video file
+    # to play.
+    if has_error:
+        state.add_line("Cannot find the video file to play!")
+        
+    # If we have an error, then pause for a moment before destroying
+    # the window.
+    if has_error:
+        state.root.after(5000, lambda: state.root.destroy())
+    else:
+        state.root.destroy()
+
+def do_mplayer_mythtv_tool(arguments):
+    # Create a Tk window and scale it up to the full size of the window.
+    root = Tkinter.Tk()
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+    
+    root.overrideredirect(1)
+    root.geometry("{0}x{1}+0+0".format(screen_width, screen_height))
+
+    # Keep track of the state variable so we can pass it over to the
+    # render method.
+    state = RenderState()
+    state.root = root
+    state.screen_height = screen_height
+
+    # Create a canvas for displaying data. We use a highlight
+    # thickness of 0 so there is no visible border on the screen.
+    canvas = Tkinter.Canvas(
+        highlightthickness=0,
+        background='black')
+    canvas.pack(expand=Tkinter.YES, fill=Tkinter.BOTH)
+
+    state.canvas = canvas
+
+    # Show the main window
+    root.after(0, lambda: start_video(arguments[0], state))
+    root.after(5000, lambda: root.destroy())
+    root.mainloop()
+
+
+if __name__ == "__main__":
+    do_mplayer_mythtv_tool(sys.argv[1:])
