@@ -325,8 +325,8 @@ def do_list(args, db):
         + ' ORDER BY path')
 
     # Loop through the rows and format it as output.
-    print 'Position Duration Last Access         State    Filename'
-    print '======== ======== =================== ======== ========'
+    print 'Position Duration Last Access         State      Filename'
+    print '======== ======== =================== ========== ========'
 
     for row in cursor:
         # Keep track of the number of records we have.
@@ -340,7 +340,7 @@ def do_list(args, db):
 
         # Print the results.
         print(
-            '{1:>8.1f} {2:>8.1f} {3} {4:<8} {0}'.
+            '{1:>8.1f} {2:>8.1f} {3} {4:<10} {0}'.
             format(row[3], row[0], row[1], row[2], state))
 
     # Close the cursor and give a line to indicate we are done.
