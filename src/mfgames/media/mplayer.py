@@ -294,7 +294,7 @@ def do_expire(args, db):
     filenames = list()
 
     for row in cursor:
-        if has_record_expired(db, row):
+        if has_record_expired(db, row) != None:
             filenames.append(row[3])
 
     cursor.close()
@@ -325,22 +325,22 @@ def do_list(args, db):
         + ' ORDER BY path')
 
     # Loop through the rows and format it as output.
-    print 'Position Duration Last Access         State   Filename'
-    print '======== ======== =================== ======= ========'
+    print 'Position Duration Last Access         State    Filename'
+    print '======== ======== =================== ======== ========'
 
     for row in cursor:
         # Keep track of the number of records we have.
         count = count + 1
 
         # Figure out the formatted state.
-        state = ''
+        state = has_record_expired(db, row)
 
-        if has_record_expired(db, row):
-            state = 'Expired'
+        if state == None:
+            state = ''
 
         # Print the results.
         print(
-            '{1:>8.1f} {2:>8.1f} {3} {4:<7} {0}'.
+            '{1:>8.1f} {2:>8.1f} {3} {4:<8} {0}'.
             format(row[3], row[0], row[1], row[2], state))
 
     # Close the cursor and give a line to indicate we are done.
@@ -389,11 +389,12 @@ def do_play(args, db):
             + 's from ' + last)
 
         # Determine if we need to expire this record.
-        if has_record_expired(db, dbrow):
+        reason = has_record_expired(db, dbrow)
+
+        if reason != None:
             # We need to ignore the contents of this record.
-            log.info('Resetting to beginning')
+            log.info('Resetting to beginning: ' + reason)
             seconds = 0
-    # end if
 
     # Build up the basic commands in a list. We include the -msgmodule
     # line so each status line shows up on its own line. We also
@@ -453,8 +454,6 @@ def do_play(args, db):
 
             # Report the results to the log.
             #log.info('New position: ' + format(seconds))
-        # end if
-    # end for
 
     process.stdout.close()
 
@@ -493,20 +492,20 @@ def has_record_expired(db, dbrow):
 
     # If we are at the beginning, it is effectively expired.
     if seconds < 0.1:
-        return True
+        return "At Start"
 
     # Ignore bookmarks near the end of the file.
     end_of_buffer_reset = get_setting_float(db, 'end_of_buffer_reset')
     
     if duration > 0.0 and (seconds + end_of_buffer_reset) > duration:
-        return True
+        return "At End"
 
     # Ignore records that are over a month long.
     then = datetime.strptime(last, DATETIME_FORMAT)
     how_long = datetime.utcnow() - then
 
     if how_long.days > get_setting_float(db, 'expire_days'):
-        return True
+        return format(how_long.days) + " days"
 
     # The record has not expired.
-    return False
+    return None
