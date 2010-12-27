@@ -376,13 +376,13 @@ def do_play(args, db):
     dbrow = cursor.fetchone()
     cursor.close()
 
+    # Get the position from the sqlite3 database.
     seconds = 0.0
     duration = 0.0
 
     if dbrow != None:
         # Pull the positional data for this file.
         seconds = dbrow[0]
-        duration = dbrow[1]
         last = dbrow[2]
         log.info("Loaded position: " + format(seconds)
             + 's of ' + format(duration)
@@ -401,6 +401,7 @@ def do_play(args, db):
     # increase the verbosity of everything so it forces the status
     # line to break into a new line.
     commands = [get_setting(db, 'program')]
+    commands.append('-identify')
     commands.append('-msgmodule')
     commands.append('-msglevel')
     commands.append('all=8')
@@ -409,7 +410,6 @@ def do_play(args, db):
     if seconds > 0:
         commands.append('-ss')
         commands.append(format(seconds))
-    # end if
 
     # Start the MPlayer process with the gathered commands. We open a
     # pipe to the output since we use that to scan for the current
@@ -435,9 +435,10 @@ def do_play(args, db):
 
         # See if we have a duration line. We need search since this
         # isn't the starting point of the line.
-        match = re.search("duration: ([\d\.]+)s", line, re.MULTILINE)
+        match = re.search("IDENTIFY: ID_LENGTH=([\d\.]+)", line, re.MULTILINE)
 
         if match != None:
+            log.info("Found duration: " + match.group(1))
             duration = max(duration, float(match.group(1)))
 
         # Use the regex to see if we have a match on this line.
