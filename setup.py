@@ -13,6 +13,7 @@ setup(
     scripts=[
         'src/mfgames-mplayer',
         'src/mfgames-mplayer-mythtv',
+	'src/mfgames-amarok',
 #        'src/mfgames-mythtv',
 #        'src/mfgames-tellico',
         ],
@@ -22,6 +23,7 @@ setup(
          ]),
         ('share/mfgames-media/mfgames/media',
          ['src/mfgames/media/__init__.py',
+          'src/mfgames/media/amarok.py',
           'src/mfgames/media/mplayer.py',
          ]),
         ('share/mfgames-media/mfgames/tools',
