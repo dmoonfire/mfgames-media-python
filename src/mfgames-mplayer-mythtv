@@ -1,9 +1,12 @@
 #!/usr/bin/python
 
 
-import sys
-import os
 import Tkinter
+import datetime
+import dateutil.relativedelta
+import logging
+import os
+import sys
 import time
 
 sys.path.append(os.path.dirname(sys.argv[0]))
@@ -55,7 +58,7 @@ class RenderState(object):
                     text=text,
                     fill="#{0:02X}{0:02X}{0:02X}".format(color),
                     anchor=Tkinter.SW,
-                    font=('Verdana', 36)))
+                    font=(self.splash_font_name, self.splash_font_size)))
 
             # Adjust the various colors and deltas
             y = y + delta_y
@@ -68,18 +71,94 @@ def create_text():
         y = y + dy
         color = color + dcolor
 
+def format_time(d):
+    """Formats the date time and returns the textual response.
+
+    http://stackoverflow.com/questions/1551382/python-user-friendly-time-format
+    """
+
+    # Create some helper lambdas to make the English prettier.
+    plural = lambda x: 's' if x > 1 else ''
+    singular = lambda x: x[:-1]
+    display_unit = lambda unit, name: '%s %s%s'%(unit, name, plural(unit)) if unit > 0 else ''
+
+    # Get the time units we are interested in, those in the default
+    # case, only # days and less are important. But it is possible the
+    # user set the configuration to never expire.
+    tm_units = ['years', 'months', 'days', 'hours', 'minutes', 'seconds']
+    now = datetime.datetime.utcnow()
+
+    rdelta = dateutil.relativedelta.relativedelta(now, d)
+
+    for idx, tm_unit in enumerate(tm_units):
+        first_unit_val = getattr(rdelta, tm_unit)
+        
+        if first_unit_val > 0:
+            primary_unit = display_unit(first_unit_val, singular(tm_unit))
+
+            # Grab the second unit to display.
+            if idx < len(tm_units)-1:
+                next_unit = tm_units[idx + 1]
+                second_unit_val = getattr(rdelta, next_unit)
+                
+                if second_unit_val > 0:
+                    secondary_unit = display_unit(
+                        second_unit_val, singular(next_unit))
+                    return primary_unit + ', '  + secondary_unit
+            return primary_unit
+
+    return None
+
 def play_video(filename, state):
     state.root.lower()
     mfgames.media.mplayer.do_mplayer_tool(["play", filename])
+    state.db.close()
     state.root.destroy()
+
+def show_filename(filename, state):
+    """Displays the filename on the screen, removing any directory roots
+    and splitting the remaining directory components into new lines."""
+
+    # Remove the directory roots.
+    for root in state.directory_roots:
+        filename = filename.replace(root, '')
+
+    # Remove the possible directory root and strip off the extension.
+    filename = filename.lstrip('/')
+    filename = os.path.splitext(filename)[0]
+
+    # Split out the directories and make each one its own line.
+    prefix = ''
+    for part in filename.split('/'):
+        state.add_line(prefix + part)
+        prefix = prefix + '  '
+
+    state.add_line('')
 
 def start_video(filename, state):
     """Starts the video in the given arguments or displays an error
     message and times out."""
 
     # Show the file we are trying to open.
-    state.add_line("Trying to start video file...")
-    state.add_line("  " + filename)
+    filename = os.path.abspath(filename)
+    show_filename(filename, state)
+
+    # Look to see if we have a record for this file.
+    lookup = filename.replace("'", '')
+
+    cursor = state.db.cursor()
+    cursor.execute('SELECT position, duration, timestamp'
+        + ' FROM bookmark'
+        + " WHERE path='" + lookup + "'")
+    dbrow = cursor.fetchone()
+    cursor.close()
+
+    if dbrow:
+        last_played = datetime.datetime.strptime(
+            dbrow[2],
+            '%Y-%m-%d %H:%M:%S')
+        last_played_formatted = format_time(last_played)
+        state.add_line('Last played ' + last_played_formatted + ' ago')
 
     # Keep track if we have an error. If we do, we wait a period of time
     # then exit out.
@@ -88,7 +167,9 @@ def start_video(filename, state):
     # Check to see if the file exists first.
     if os.path.exists(filename):
         # Play the video using the mplayer tool.
-        state.root.after(500, lambda: play_video(filename, state))
+        state.root.after(
+            state.splash_play_pause,
+            lambda: play_video(filename, state))
         has_error = False
 
     # If we still have an error, then we couldn't find the video file
@@ -96,7 +177,10 @@ def start_video(filename, state):
     # window.
     if has_error:
         state.add_line("Cannot find the video file to play!")
-        state.root.after(5000, lambda: state.root.destroy())
+        state.db.close()
+        state.root.after(
+            state.splash_error_pause,
+            lambda: state.root.destroy())
 
 def do_mplayer_mythtv_tool(arguments):
     # Create a Tk window and scale it up to the full size of the window.
@@ -107,9 +191,33 @@ def do_mplayer_mythtv_tool(arguments):
     root.overrideredirect(1)
     root.geometry("{0}x{1}+0+0".format(screen_width, screen_height))
 
+    # Logging
+    logging.basicConfig(
+        format=mfgames.media.mplayer.LOG_FORMAT,
+        level=logging.DEBUG)
+
+    # Database
+    db = mfgames.media.mplayer.database_connect()
+
     # Keep track of the state variable so we can pass it over to the
     # render method.
     state = RenderState()
+    state.db = db
+    state.directory_roots = mfgames.media.mplayer.get_setting(
+        db,
+        "directory_roots").split(":")
+    state.splash_error_pause = mfgames.media.mplayer.get_setting(
+        db,
+        "splash_error_pause")
+    state.splash_play_pause = mfgames.media.mplayer.get_setting(
+        db,
+        "splash_play_pause")
+    state.splash_font_name = mfgames.media.mplayer.get_setting(
+        db,
+        "splash_font_name")
+    state.splash_font_size = mfgames.media.mplayer.get_setting(
+        db,
+        "splash_font_size")
     state.root = root
     state.screen_height = screen_height
 

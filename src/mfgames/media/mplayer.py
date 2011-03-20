@@ -14,7 +14,7 @@ import sqlite3
 
 
 # Schema used to identify the current file structure.
-DATABASE_SCHEMA = 3
+DATABASE_SCHEMA = 4
 
 # Regex used to identify a status line from the mplayer output.
 STATUS_REGEX = 'STATUSLINE: A:\s*([\d+\.]+)\s+V:\s*([\d+\.]+)\s+A-V:'
@@ -67,8 +67,6 @@ def do_mplayer_tool(arguments):
     
     # Logging
     logging.basicConfig(format=LOG_FORMAT, level=logging.DEBUG)
-    #level=logging.DEBUG, INFO, etc
-    #filename=LOG_FILENAME
 
     # Database
     db = database_connect()
@@ -176,9 +174,24 @@ def upgrade_schema(db, schema_version):
         log.info("Upgrading schema to version 3")
         db.execute("INSERT INTO settings VALUES('expire_days', 30);")
 
-        # update the current version of the schema.
+        # Update the current version of the schema.
         db.execute("UPDATE schema SET version = 3;")
         schema_version = 3
+
+    # Version 4 adds configuration options for mfgames-mplayer-mythtv.
+    if schema_version < 4:
+        # Perform the steps for the upgrade.
+        log.info("Upgrading schema to version 4")
+        insert = "INSERT INTO settings VALUES"
+        db.execute(insert + "('directory_roots', '');")
+        db.execute(insert + "('splash_error_pause', '5000');")
+        db.execute(insert + "('splash_play_pause', '1000');")
+        db.execute(insert + "('splash_font_name', 'Verdana');")
+        db.execute(insert + "('splash_font_size', '24');")
+
+        # Update the current version of the schema.
+        db.execute("UPDATE schema SET version = 4;")
+        schema_version = 4
 
 def get_database_schema(db):
     """Retrieves the database schema version."""
