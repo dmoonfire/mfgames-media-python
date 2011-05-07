@@ -16,6 +16,7 @@ setup(
 	'src/mfgames-amarok',
 #        'src/mfgames-mythtv',
 #        'src/mfgames-tellico',
+	'src/mfgames-lirc',
         ],
     data_files=[
         ('share/mfgames-media/mfgames',
@@ -24,6 +25,7 @@ setup(
         ('share/mfgames-media/mfgames/media',
          ['src/mfgames/media/__init__.py',
           'src/mfgames/media/amarok.py',
+          'src/mfgames/media/lirc.py',
           'src/mfgames/media/mplayer.py',
          ]),
         ('share/mfgames-media/mfgames/tools',
