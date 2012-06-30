@@ -5,15 +5,10 @@ import Tkinter
 import datetime
 import dateutil.relativedelta
 import logging
+import mfgames_media.mplayer
 import os
 import sys
 import time
-
-sys.path.append(os.path.dirname(sys.argv[0]))
-sys.path.append('/usr/share/mfgames-media')
-sys.path.append('/usr/local/share/mfgames-media')
-
-import mfgames.media.mplayer
 
 
 class RenderState(object):
@@ -111,7 +106,7 @@ def format_time(d):
 
 def play_video(filename, state):
     state.root.lower()
-    mfgames.media.mplayer.do_mplayer_tool(["play", filename])
+    mfgames_media.mplayer.do_mplayer_tool(["play", filename])
     state.db.close()
     state.root.destroy()
 
@@ -193,29 +188,29 @@ def do_mplayer_mythtv_tool(arguments):
 
     # Logging
     logging.basicConfig(
-        format=mfgames.media.mplayer.LOG_FORMAT,
+        format=mfgames_media.mplayer.LOG_FORMAT,
         level=logging.DEBUG)
 
     # Database
-    db = mfgames.media.mplayer.database_connect()
+    db = mfgames_media.mplayer.database_connect()
 
     # Keep track of the state variable so we can pass it over to the
     # render method.
     state = RenderState()
     state.db = db
-    state.directory_roots = mfgames.media.mplayer.get_setting(
+    state.directory_roots = mfgames_media.mplayer.get_setting(
         db,
         "directory_roots").split(":")
-    state.splash_error_pause = mfgames.media.mplayer.get_setting(
+    state.splash_error_pause = mfgames_media.mplayer.get_setting(
         db,
         "splash_error_pause")
-    state.splash_play_pause = mfgames.media.mplayer.get_setting(
+    state.splash_play_pause = mfgames_media.mplayer.get_setting(
         db,
         "splash_play_pause")
-    state.splash_font_name = mfgames.media.mplayer.get_setting(
+    state.splash_font_name = mfgames_media.mplayer.get_setting(
         db,
         "splash_font_name")
-    state.splash_font_size = mfgames.media.mplayer.get_setting(
+    state.splash_font_size = mfgames_media.mplayer.get_setting(
         db,
         "splash_font_size")
     state.root = root

@@ -4,10 +4,10 @@
 import logging
 import os
 
-import mfgames.tools.process
+import mfgames_tools.process
 
 
-class ConvertToTabSeparatedValues(mfgames.tools.process.Process):
+class ConvertToTabSeparatedValues(mfgames_tools.process.Process):
     """Converts the given input file into a tab separated values."""
 
     def __init__(self):
@@ -121,7 +121,7 @@ class ConvertToTabSeparatedValues(mfgames.tools.process.Process):
         return 'Converts Lirc files into tab seperated values.'
 
 
-class ConvertToLirc(mfgames.tools.process.Process):
+class ConvertToLirc(mfgames_tools.process.Process):
     """Converts the given tab-separated values into a Lirc configuration file."""
 
     def __init__(self):

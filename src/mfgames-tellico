@@ -6,17 +6,13 @@
 import argparse
 import logging
 import sys
-
-sys.path.append('/usr/share/mfgames-media')
-sys.path.append('/usr/local/share/mfgames-media')
-
-import mfgames.media.tellico
+import mfgames_media.tellico
 
 
 LOG_FORMAT = "%(asctime)-15s %(message)s"
 
 processes = {
-    'stats' : mfgames.media.tellico.StatsProcess(),
+    'stats' : mfgames_media.tellico.StatsProcess(),
     }
 
 

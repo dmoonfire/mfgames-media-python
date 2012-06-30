@@ -8,10 +8,10 @@ import re
 
 import MySQLdb
 
-import mfgames.tools.process
+import mfgames_tools.process
 
 
-class AmarokProcess(mfgames.tools.process.Process):
+class AmarokProcess(mfgames_tools.process.Process):
     """Extends the basic Process class to handle Amarok databases."""
 
     def __init__(self):

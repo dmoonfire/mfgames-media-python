@@ -5,10 +5,10 @@ import logging
 import xml.sax
 import zipfile
 
-import mfgames.media.process
+import mfgames_tools.process
 
 
-class TellicoArchiveProcess(mfgames.media.process.Process):
+class TellicoArchiveProcess(mfgames_tools.process.Process):
     """Extends the basic Process class to handle a single Tellico archive."""
 
     def __init__(self):
