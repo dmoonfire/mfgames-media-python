@@ -1,7 +1,9 @@
 """Process classes for working with themoviedb.com."""
 
 
+import urllib
 import StringIO
+import simplejson
 import logging
 import mfgames_tools.process
 import os
@@ -36,6 +38,11 @@ class TmdbProcess(mfgames_tools.process.Process):
 
         tmdb.configure(args.api_key)
 
+        # Get the v3 API stuff directly through JSON.
+        url = "http://api.themoviedb.org/3/configuration?api_key={0}".format(
+            args.api_key)
+        self.configuration = self.get_json(url)
+
         # We were successful, so return true.
         return True
 
@@ -49,6 +56,68 @@ class TmdbProcess(mfgames_tools.process.Process):
             type=str,
             nargs=1,
             help='API key from themoviedb.com, required.')
+
+    def get_images_base_url(self):
+        return self.configuration['images']['base_url']
+
+    def get_json(self, url):
+        # Set up the PyCurl process so we can download the results
+        # directly. We do this so it is easier to pull out the data
+        # later (e.g., cache it).
+        pycurl.global_init(pycurl.GLOBAL_DEFAULT)
+
+        # Retrieve the JSON for that specific movie.
+        curl = pycurl.Curl()
+        curl.setopt(pycurl.URL, url)
+        curl.setopt(pycurl.HTTPHEADER, ["Accept: application/json"])
+
+        # Download into a string.
+        buf = StringIO.StringIO()
+        curl.setopt(pycurl.WRITEFUNCTION, buf.write)
+        curl.setopt(pycurl.FOLLOWLOCATION, 1)
+        curl.setopt(pycurl.MAXREDIRS, 5)
+        curl.perform()
+        
+        # Return the resulting JSON file.
+        json = simplejson.loads(buf.getvalue())
+        return json
+
+
+class TmdbMovieProcess(TmdbProcess):
+    """Common base class for processes that operate on a single
+    movie. This takes a JSON file with information as the first
+    parameter."""
+
+    def __init__(self):
+        super(TmdbMovieProcess, self).__init__()
+
+    def process(self, args):
+        # Perform any base class processing.
+        if not super(TmdbMovieProcess, self).process(args):
+            return False
+
+        # Load the movie information into memory.
+        if not os.path.isfile(args.tmdb):
+            self.log("Cannot find JSON file: " + args.tmdb)
+            return False
+
+        stream = open(args.tmdb, 'r')
+        self.movie = simplejson.load(stream)
+        stream.close()
+
+        # We were successful, so return true.
+        return True
+
+    def setup_arguments(self, parser):
+        # Add in the argument from the base class.
+        super(TmdbProcess, self).setup_arguments(parser)
+
+        # Add the Creole-conversion specific processes.
+        parser.add_argument(
+            'tmdb',
+            type=str,
+            help='JSON file with the information about a TMDB movie.')
+
 
 class IdProcess(TmdbProcess):
     """Searches themoviedb.com for the ID for a given movie."""
@@ -124,23 +193,15 @@ class JsonProcess(TmdbProcess):
         if not super(JsonProcess, self).process(args):
             return
 
-        # Set up the PyCurl process so we can download the results
-        # directly. We do this so it is easier to pull out the data
-        # later (e.g., cache it).
-        pycurl.global_init(pycurl.GLOBAL_DEFAULT)
-
-        # Retrieve the JSON for that specific movie.
-        curl = pycurl.Curl()
-        curl.setopt(
-            pycurl.URL,
-            "http://api.themoviedb.org/3/movie/{0}?api_key={1}".format(
-                args.id,
-                args.api_key))
-        curl.setopt(pycurl.HTTPHEADER, ["Accept: application/json"])
-
-        # Figure out where we're downloading to.
+        url = "http://api.themoviedb.org/3/movie/{0}?api_key={1}".format(
+            args.id,
+            args.api_key)
+        json = self.get_json(url)
+        formatted = simplejson.dumps(json, indent=4, sort_keys=True)
+        
+        # Write out the results to either stdout or the file.
         if args.output == "-":
-            stream = sys.stdout
+            print formatted
         else:
             # If the file exists, we need to check for forcing.
             if os.path.isfile(args.output) and not args.force:
@@ -148,16 +209,11 @@ class JsonProcess(TmdbProcess):
                 return False
 
             # Open the stream for writing.
-            stream = open(args.output, 'w')
+            stream = open(args.output, "w")
+            simplejson.dump(json, stream, sort_keys=True, indent=4)
+            stream.close()
 
-        # Download into a string.
-        buf = StringIO.StringIO()
-        curl.setopt(pycurl.WRITEFUNCTION, stream.write)
-        curl.setopt(pycurl.FOLLOWLOCATION, 1)
-        curl.setopt(pycurl.MAXREDIRS, 5)
-        curl.perform()
-        
-        # Close the stream if we're done.
+        # Close the file.
         if not args.output == "-":
             stream.close()
 
@@ -178,6 +234,61 @@ class JsonProcess(TmdbProcess):
             type=str,
             default='-',
             help='The output file to write the results. If - or missing, it will write to standard output.')
+        parser.add_argument(
+            '--force', '-f',
+            action='store_true',
+            help="If used, then the output will overwrite the file.")
+
+    def get_help(self):
+        return "Downloads the JSON file for a given ID and write it to a file or standard out."
+
+
+class PosterProcess(TmdbMovieProcess):
+    """Downloads the poster of for a given movie."""
+
+    def process(self, args):
+        # Perform any base class processing.
+        if not super(PosterProcess, self).process(args):
+            return
+
+        # If we don't have an output parameter, we figure it out from
+        # the input filename.
+        output = args.output
+
+        if not output:
+            output = os.path.splitext(args.tmdb)[0] + ".jpg"
+
+        # Check to see if the file exists.
+        if os.path.isfile(output) and not args.force:
+            print "Cannot overwrite file: " + output
+            return False
+
+        # Build up the path to get the image. This is described in
+        # http://help.themoviedb.org/kb/api/configuration
+        # http://cf2.imgobject.com/t/p/w500/mOTtuakUTb1qY6jG6lzMfjdhLwc.jpg
+        url = "{0}/{1}/{2}".format(
+            self.get_images_base_url(),
+            args.width,
+            self.movie['poster_path'])
+
+        urllib.urlretrieve(url, output)
+
+        self.log.info("Downloaded " + output)
+
+    def setup_arguments(self, parser):
+        # Add in the argument from the base class.
+        super(PosterProcess, self).setup_arguments(parser)
+
+        # Add the Creole-conversion specific processes.
+        parser.add_argument(
+            '--output', '-o',
+            type=str,
+            help='The filename of the image file to write. If missing, then it will be based on the input file.')
+        parser.add_argument(
+            '--width', '-w',
+            type=str,
+            default='w342',
+            help='The width code for TMDB: "w92", "w154", "w185", "w342", "w500", "original"')
         parser.add_argument(
             '--force', '-f',
             action='store_true',

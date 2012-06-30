@@ -10,10 +10,12 @@ import mfgames_tools
 
 LOG_FORMAT = "%(asctime)-15s %(message)s"
 
+
 def do_tmdb_tool(arguments):
     processes = {
         'id' : mfgames_media.themoviedb.IdProcess(),
         'json': mfgames_media.themoviedb.JsonProcess(),
+        'poster': mfgames_media.themoviedb.PosterProcess(),
         }
     
     mfgames_tools.run_tool(
