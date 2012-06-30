@@ -33,6 +33,7 @@ setup(
     # Scripts
     scripts=[
         'src/mfgames-tellico',
+        'src/mfgames-tmdb',
         ],
 
     # Packages

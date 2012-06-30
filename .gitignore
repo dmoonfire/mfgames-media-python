@@ -2,3 +2,5 @@
 *.mkv
 *.pyc
 build
+*.tmdb
+*.tvdb

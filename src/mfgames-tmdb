@@ -1,0 +1,27 @@
+#!/usr/bin/env python
+
+"""Command-line utility for working with themoviedb.com."""
+
+
+import sys
+import mfgames_media.themoviedb
+import mfgames_tools
+
+
+LOG_FORMAT = "%(asctime)-15s %(message)s"
+
+def do_tmdb_tool(arguments):
+    processes = {
+        'id' : mfgames_media.themoviedb.IdProcess(),
+        'json': mfgames_media.themoviedb.JsonProcess(),
+        }
+    
+    mfgames_tools.run_tool(
+        "Query data from themoviedb.com.",
+        arguments,
+        processes,
+        config_id="mfgames-media")
+
+
+if __name__ == "__main__":
+    do_tmdb_tool(sys.argv[1:])
