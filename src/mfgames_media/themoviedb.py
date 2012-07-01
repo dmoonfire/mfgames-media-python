@@ -53,11 +53,11 @@ class TmdbProcess(mfgames_tools.process.Process):
 
     def configure(self):
         # Configure the TMDB database.
-        tmdb.configure(args.api_key)
+        tmdb.configure(self.args.api_key)
 
         # Get the v3 API stuff directly through JSON.
         url = "http://api.themoviedb.org/3/configuration?api_key={0}".format(
-            args.api_key)
+            self.args.api_key)
         self.configuration = self.get_json(url)
 
     def get_images_base_url(self):
@@ -259,6 +259,9 @@ class PosterProcess(TmdbMovieProcess):
         # Perform any base class processing.
         if not super(PosterProcess, self).process(args):
             return
+
+        # Configure the process.
+        self.configure()
 
         # If we don't have an output parameter, we figure it out from
         # the input filename.
