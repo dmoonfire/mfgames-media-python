@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<movie xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" ThumbGen="1">
+  <hasrighttoleftdirection>false</hasrighttoleftdirection>
+  <title>Charlie's Angels</title>
+  <originaltitle>Charlie's Angels</originaltitle>
+  <year>2000</year>
+  <plot>Aspects of this take on the 1970s hit TV series are similar to the original show :Angels Dylan, Natalie and Alex still work for Charlie and interface with Bosley. They still flip their hair, stop traffic with a smile and kick butt. The differences are the unsubtle humor, the martial arts training and the high-tech premise: This time, they're hot on the trail of stolen software.</plot>
+  <filename>Charlie's Angels.mp4</filename>
+  <tagline>Get Some Action</tagline>
+  <trailer>http://www.youtube.com/watch?v=1pireUuRxe8</trailer>
+  <rating>5.5</rating>
+  <episodes />
+  <episodesnames />
+  <writers />
+  <gueststars />
+  <id>tt0160127</id>
+  <releasedate>22.10.2000</releasedate>
+  <mpaa>Rated PG-13 for action violence, innuendo and some sensuality/nudity</mpaa>
+  <actor>
+    <name>Cameron Diaz</name>
+    <name>Lucy Liu</name>
+    <name>Drew Barrymore</name>
+    <name>Bill Murray</name>
+    <name>John Forsythe</name>
+    <name>Sam Rockwell</name>
+    <name>Kelly Lynch</name>
+    <name>Tim Curry</name>
+    <name>Luke Wilson</name>
+    <name>Crispin Glover</name>
+    <name>Matt LeBlanc</name>
+    <name>Tom Green</name>
+    <name>LL Cool J</name>
+    <name>Sean Whalen</name>
+  </actor>
+  <genre>
+    <name>Action</name>
+    <name>Adventure</name>
+    <name>Comedy</name>
+  </genre>
+  <director>
+    <name>McG</name>
+  </director>
+  <runtime>98</runtime>
+  <certification>PG-13</certification>
+  <studio>
+    <name>Columbia Pictures</name>
+  </studio>
+  <country>
+    <name>United States of America</name>
+  </country>
+  <cover />
+  <backdrop />
+  <mediainfo>
+    <Resolution>
+      <Flag>Resolution_480p</Flag>
+    </Resolution>
+    <resolution>480P</resolution>
+    <Format>
+      <Flag>Format_Mpeg</Flag>
+    </Format>
+    <format>mpeg4</format>
+    <Video>
+      <Flag>Video_H264</Flag>
+    </Video>
+    <video>avc</video>
+    <Audio>
+      <Flag>Audio_AACStereo</Flag>
+    </Audio>
+    <audio>AAC</audio>
+    <Subtitles>
+      <Flag>Unknown</Flag>
+    </Subtitles>
+    <SubtitlesText>Unknown</SubtitlesText>
+    <framerate>59.940</framerate>
+    <aspectratio>2.35:1</aspectratio>
+    <videoresolution>714x360</videoresolution>
+    <videocodec>AVC</videocodec>
+    <videobitrate>785 Kbps</videobitrate>
+    <audiocodec>AAC</audiocodec>
+    <audiochannels>2</audiochannels>
+    <audiobitrate>128 Kbps</audiobitrate>
+    <durationseconds>5903</durationseconds>
+    <durationminutes>98</durationminutes>
+    <duration>1h 38m</duration>
+    <filesizebytes>682274173</filesizebytes>
+    <filesize>650.67 MB</filesize>
+    <container>MPEG-4</container>
+    <language>English</language>
+    <languagecode>en</languagecode>
+    <languages>English</languages>
+    <languagecodes>en</languagecodes>
+    <externalsubtitles />
+  </mediainfo>
+</movie>

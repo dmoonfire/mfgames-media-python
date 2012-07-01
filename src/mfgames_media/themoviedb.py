@@ -1,6 +1,7 @@
 """Process classes for working with themoviedb.com."""
 
 
+from elementtree.SimpleXMLWriter import XMLWriter
 import urllib
 import StringIO
 import simplejson
@@ -36,13 +37,6 @@ class TmdbProcess(mfgames_tools.process.Process):
                            + "or configuration file.")
             return False
 
-        tmdb.configure(args.api_key)
-
-        # Get the v3 API stuff directly through JSON.
-        url = "http://api.themoviedb.org/3/configuration?api_key={0}".format(
-            args.api_key)
-        self.configuration = self.get_json(url)
-
         # We were successful, so return true.
         return True
 
@@ -56,6 +50,15 @@ class TmdbProcess(mfgames_tools.process.Process):
             type=str,
             nargs=1,
             help='API key from themoviedb.com, required.')
+
+    def configure(self):
+        # Configure the TMDB database.
+        tmdb.configure(args.api_key)
+
+        # Get the v3 API stuff directly through JSON.
+        url = "http://api.themoviedb.org/3/configuration?api_key={0}".format(
+            args.api_key)
+        self.configuration = self.get_json(url)
 
     def get_images_base_url(self):
         return self.configuration['images']['base_url']
@@ -127,6 +130,9 @@ class IdProcess(TmdbProcess):
         if not super(IdProcess, self).process(args):
             return
 
+        # Set up the configuration.
+        self.configure()
+
         # Combine the title elements together since we allow both a
         # single variable or combined together. Once we have that,
         # normalize the name.
@@ -192,6 +198,9 @@ class JsonProcess(TmdbProcess):
         # Perform any base class processing.
         if not super(JsonProcess, self).process(args):
             return
+
+        # Set up the configuration.
+        self.configure()
 
         url = "http://api.themoviedb.org/3/movie/{0}?api_key={1}".format(
             args.id,
@@ -296,3 +305,81 @@ class PosterProcess(TmdbMovieProcess):
 
     def get_help(self):
         return "Downloads the JSON file for a given ID and write it to a file or standard out."
+
+
+class NfoProcess(TmdbMovieProcess):
+    """Creates an NFO file from the cached TMDB."""
+
+    def process(self, args):
+        # Perform any base class processing.
+        if not super(NfoProcess, self).process(args):
+            return
+
+        # If we don't have an output parameter, we figure it out from
+        # the input filename.
+        output = args.output
+
+        if not output:
+            output = os.path.splitext(args.tmdb)[0] + ".nfo"
+
+        # Check to see if the file exists.
+        if os.path.isfile(output) and not args.force:
+            print "Cannot overwrite file: " + output
+            return False
+
+        # Open up the output file.
+        xml = open(output, 'w')
+        xml.write("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n")
+
+        w = XMLWriter(xml, 'utf-8')
+        tag = w.start("movie", ThumbGen="1")
+        w.element("hasrighttoleftdirection", "false")
+        w.element("title", self.movie['title'])
+        w.element("originaltitle", self.movie['original_title'])
+        w.element("filename", os.path.splitext(args.tmdb)[0] + ".mp4")
+        w.element("tagline", self.movie['tagline'])
+        w.element("releasedate", self.movie['release_date'])
+        w.element("id", self.movie['imdb_id'])
+        w.element("runtime", format(self.movie['runtime']))
+        w.element("plot", self.movie['overview'])
+
+        # Write out the genres.
+        w.start("genre")
+
+        for genre in self.movie['genres']:
+            w.element("name", genre['name'])
+
+        w.end()
+
+        # Media information
+        w.start("mediainfo")
+        w.start("Resolution")
+        w.element("Flag", "Resolution_480p")
+        w.end()
+        w.element("resolution", "480P")
+        w.end()
+
+        # Finish up the document.
+        w.end()
+        w.close(tag)
+        xml.close()
+
+        # Report that we created the file.
+        self.log.info("Created " + output)
+
+    def setup_arguments(self, parser):
+        # Add in the argument from the base class.
+        super(NfoProcess, self).setup_arguments(parser)
+
+        # Add the Creole-conversion specific processes.
+        parser.add_argument(
+            '--output', '-o',
+            type=str,
+            help='The filename of the image file to write. If missing, then it will be based on the input file.')
+        parser.add_argument(
+            '--force', '-f',
+            action='store_true',
+            help="If used, then the output will overwrite the file.")
+
+    def get_help(self):
+        return "Creates a NFO file from the cached JSON file."

@@ -15,6 +15,7 @@ def do_tmdb_tool(arguments):
     processes = {
         'id' : mfgames_media.themoviedb.IdProcess(),
         'json': mfgames_media.themoviedb.JsonProcess(),
+        'nfo': mfgames_media.themoviedb.NfoProcess(),
         'poster': mfgames_media.themoviedb.PosterProcess(),
         }
     
