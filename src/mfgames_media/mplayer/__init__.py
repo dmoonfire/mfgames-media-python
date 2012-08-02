@@ -48,7 +48,7 @@ class JsonProcess(mfgames_tools.process.Process):
 
         # If the file exists, we need to check for forcing.
         if "enable-mplayer" in json and not args.force:
-            log.info("File already exists, skipping")
+            log.info("Information already cached, skipping")
             return False
 
         # Put in the enable flag.

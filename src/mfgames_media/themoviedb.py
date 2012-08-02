@@ -140,13 +140,17 @@ class IdProcess(TmdbProcess):
         title = self.normalize_title(title)
         
         # Do a search for the title using the TMDB library.
-        movie = tmdb.tmdb(title)
+        try:
+            movie = tmdb.tmdb(title)
 
-        if movie:
-            print args.format % {
-                "id": movie.getId(0),
-                "title": movie.getName(0),
-                }
+            if movie:
+                print args.format % {
+                    "id": movie.getId(0),
+                    "title": movie.getName(0),
+                    }
+        except:
+            # We don't do anything in exceptions so it doesn't print data.
+            pass
 
     def setup_arguments(self, parser):
         # Add in the argument from the base class.
@@ -199,31 +203,58 @@ class JsonProcess(TmdbProcess):
         if not super(JsonProcess, self).process(args):
             return
 
-        # Set up the configuration.
-        self.configure()
+        # Check to see if the JSON file exists.
+        if args.json == "-":
+            json = {}
+        elif os.path.isfile(args.json):
+            self.log.info("Using JSON file: " + args.json)
+            stream = open(args.json, 'r')
+            json = simplejson.load(stream)
+            stream.close()
+        else:
+            self.log.info("Creating JSON file: " + args.json)
+            json = {}
 
-        url = "http://api.themoviedb.org/3/movie/{0}?api_key={1}".format(
-            args.id,
-            args.api_key)
-        json = self.get_json(url)
-        formatted = simplejson.dumps(json, indent=4, sort_keys=True)
+        # If the file exists and we have the enable flag, then we
+        # check to see if we are going to force writing the file.
+        if "enable-tmdb" in json and not args.force:
+            self.log.info("Information already cached, skipping")
+            return False
+
+        # If the ID is 0 or less, then we disable it.
+        if args.id <= 0:
+            # Remove any existing JSON data and disable TMDB.
+            json["enable-tmdb"] = False
+
+            if "tmdb" in json:
+                del json["tmdb"]
+        else:
+            # Set up the configuration for TMDB.
+            self.configure()
+
+            url = "http://api.themoviedb.org/3/movie/{0}?api_key={1}".format(
+                args.id,
+                args.api_key)
+            tmdb_json = self.get_json(url)
+
+            # Insert the TMDB JSON data into the JSON.
+            json["enable-tmdb"] = True
+            json["tmdb"] = tmdb_json
         
-        # Write out the results to either stdout or the file.
+        # Now that we are done, get the formatted JSON file.
+        formatted = simplejson.dumps(json, indent=4, sort_keys=True)
+
+        # Figure out how to output the file.
+        if not args.output:
+            args.output = args.json
+
         if args.output == "-":
+            # Just print it to the output.
             print formatted
         else:
-            # If the file exists, we need to check for forcing.
-            if os.path.isfile(args.output) and not args.force:
-                print "Cannot overwrite file: " + args.output
-                return False
-
             # Open the stream for writing.
             stream = open(args.output, "w")
             simplejson.dump(json, stream, sort_keys=True, indent=4)
-            stream.close()
-
-        # Close the file.
-        if not args.output == "-":
             stream.close()
 
         # Finish up the PyCurl library.
@@ -239,9 +270,12 @@ class JsonProcess(TmdbProcess):
             type=int,
             help='The TMDB ID for the movie to retrieve.')
         parser.add_argument(
+            'json',
+            type=str,
+            help='The input JSON file for caching the TMDB information.')
+        parser.add_argument(
             '--output', '-o',
             type=str,
-            default='-',
             help='The output file to write the results. If - or missing, it will write to standard output.')
         parser.add_argument(
             '--force', '-f',
