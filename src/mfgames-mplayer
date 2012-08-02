@@ -1,10 +1,33 @@
 #!/usr/bin/env python
 
+"""Command-line utility for working with MPlayer."""
 
-import mfgames_media.mplayer
-import os
+
 import sys
+import mfgames_media.mplayer.bookmarks
+import mfgames_tools
+
+
+def do_mplayer_tool(arguments):
+    processes = {
+        'bookmark-config':
+            mfgames_media.mplayer.bookmarks.BookmarkConfigProcess(),
+        'bookmark-list':
+            mfgames_media.mplayer.bookmarks.BookmarkListProcess(),
+        'bookmark-clear':
+            mfgames_media.mplayer.bookmarks.BookmarkClearProcess(),
+        'bookmark-expire':
+            mfgames_media.mplayer.bookmarks.BookmarkExpireProcess(),
+        'bookmark-play':
+            mfgames_media.mplayer.bookmarks.BookmarkPlayProcess(),
+        }
+    
+    mfgames_tools.run_tool(
+        "Utility for working with MPlayer.",
+        arguments,
+        processes,
+        config_id="mfgames-mplayer")
 
 
 if __name__ == "__main__":
-    mfgames_media.mplayer.do_mplayer_tool(sys.argv[1:])
+    do_mplayer_tool(sys.argv[1:])
