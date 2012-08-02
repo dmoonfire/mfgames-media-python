@@ -20,6 +20,8 @@ def do_mplayer_tool(arguments):
             mfgames_media.mplayer.bookmarks.BookmarkExpireProcess(),
         'bookmark-play':
             mfgames_media.mplayer.bookmarks.BookmarkPlayProcess(),
+        'json':
+            mfgames_media.mplayer.JsonProcess(),
         }
     
     mfgames_tools.run_tool(

@@ -32,6 +32,7 @@ setup(
 
     # Scripts
     scripts=[
+        'src/mfgames-mplayer',
         'src/mfgames-tellico',
         'src/mfgames-tmdb',
         ],
@@ -39,6 +40,7 @@ setup(
     # Packages
     packages=[
         "mfgames_media",
+        "mfgames_media.mplayer",
         ],
     package_dir = {'': 'src'}
     )

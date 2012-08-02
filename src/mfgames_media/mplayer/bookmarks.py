@@ -542,9 +542,3 @@ class BookmarkPlayProcess(BookmarkProcess):
             'file',
             type=str,
             help='Movie file to play.')
-
-
-# #
-# # Clear
-# #
-
